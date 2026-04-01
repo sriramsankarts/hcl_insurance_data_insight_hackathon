@@ -1,0 +1,93 @@
+-------FOR AUDIT CHANGES USING STREAM AND TASKS
+
+
+---STREAM
+CREATE OR REPLACE STREAM CREATING_STREAM_ON_SILVER_FOR_TRACKING_POLICY
+ON TABLE VALIDATED_POLICY
+APPEND_ONLY = FALSE
+COMMENT = 'Tracks all changes to Silver Policy';
+
+
+CREATE OR REPLACE STREAM CREATING_STREAM_ON_SILVER_FOR_TRACKING_CLAIMS
+ON TABLE VALIDATED_CLAIMS
+APPEND_ONLY = FALSE
+COMMENT = 'Tracks all changes to Silver Claims';
+
+CREATE OR REPLACE STREAM CREATING_STREAM_ON_SILVER_FOR_TRACKING_CUSTOMERS
+ON TABLE VALIDATED_CUSTOMER
+APPEND_ONLY = FALSE
+COMMENT = 'Tracks all changes to Silver Customers';
+
+
+
+---TASK
+CREATE OR REPLACE TASK TASK_AUDIT_SILVER_POLICY
+    WAREHOUSE = COMPUTE_WH
+    SCHEDULE  = '1 MINUTE'
+    WHEN SYSTEM$STREAM_HAS_DATA('CREATING_STREAM_ON_SILVER_FOR_TRACKING_POLICY')
+AS
+INSERT INTO AUDIT_LOG (
+    table_name,
+    action_type,
+    is_update,
+    record_id,
+    remarks
+)
+SELECT
+    'VALIDATED_POLICY'AS table_name,
+    METADATA$ACTION   AS action_type,
+    METADATA$ISUPDATE   AS is_update,
+    policy_id   AS record_id,
+    'Change detected in Silver' AS remarks
+FROM CREATING_STREAM_ON_SILVER_FOR_TRACKING_POLICY;
+
+
+CREATE OR REPLACE TASK TASK_AUDIT_SILVER_CLAIMS
+    WAREHOUSE = COMPUTE_WH
+    SCHEDULE  = '1 MINUTE'
+    WHEN SYSTEM$STREAM_HAS_DATA('CREATING_STREAM_ON_SILVER_FOR_TRACKING_CLAIMS')
+AS
+INSERT INTO AUDIT_LOG (
+    table_name,
+    action_type,
+    is_update,
+    record_id,
+    remarks
+)
+SELECT
+    'VALIDATED_RISK'  AS table_name,
+    METADATA$ACTION  AS action_type,
+    METADATA$ISUPDATE  AS is_update,
+    policy_id   AS record_id,
+    'Change detected in Silver' AS remarks
+FROM CREATING_STREAM_ON_SILVER_FOR_TRACKING_CLAIMS;
+
+
+
+CREATE OR REPLACE TASK TASK_AUDIT_SILVER_CUSTOMERS
+    WAREHOUSE = COMPUTE_WH
+    SCHEDULE  = '1 MINUTE'
+    WHEN SYSTEM$STREAM_HAS_DATA('CREATING_STREAM_ON_SILVER_FOR_TRACKING_CUSTOMERS')
+AS
+INSERT INTO AUDIT_LOG (
+    table_name,
+    action_type,
+    is_update,
+    record_id,
+    remarks
+)
+SELECT
+    'VALIDATED_RISK'   AS table_name,
+    METADATA$ACTION    AS action_type,
+    METADATA$ISUPDATE   AS is_update,
+    customer_id        AS record_id,
+    'Change detected in Silver' AS remarks
+FROM CREATING_STREAM_ON_SILVER_FOR_TRACKING_CUSTOMERS;
+
+
+------------------------------------------------------------------------------------------------------------------------------------------
+
+ALTER TASK TASK_AUDIT_SILVER_POLICY RESUME;
+ALTER TASK TASK_AUDIT_SILVER_CLAIMS RESUME;
+ALTER TASK TASK_AUDIT_SILVER_CUSTOMERS RESUME;
+    
